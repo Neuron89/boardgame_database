@@ -43,6 +43,31 @@ function App() {
     }
   };
 
+  // Handle deleting a game
+  const handleDeleteGame = async (gameId) => {
+    try {
+      console.log('Attempting to delete game with ID:', gameId);
+      
+      const response = await fetch(`http://localhost:5000/api/boardgames/${gameId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+      console.log('Server response:', data);
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete game: ${data.error || 'Unknown error'}`);
+      }
+
+      console.log('Game deleted successfully');
+      // Refresh the games list after deletion
+      await fetchGames();
+    } catch (error) {
+      console.error('Error deleting game:', error);
+      alert('Failed to delete game. Please try again.');
+    }
+  };
+
   // Handle adding new game
   const handleAddGame = async (newGame) => {
     try {
@@ -88,8 +113,12 @@ function App() {
         throw new Error('Failed to add game');
       }
 
+      const savedGame = await response.json();
+      console.log('Server response:', savedGame);
+
       // Refresh the games list after adding
       await fetchGames();
+      console.log('Updated games list:', games);
       setShowAddForm(false);
     } catch (error) {
       console.error('Error adding game:', error);
@@ -121,7 +150,7 @@ function App() {
         </div>
       )}
 
-      <GameList games={games} />
+      <GameList games={games} onDeleteGame={handleDeleteGame} />
     </div>
   );
 }

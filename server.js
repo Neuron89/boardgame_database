@@ -99,7 +99,26 @@ app.get('/api/boardgames/search', (req, res) => {
         res.json(rows);
     });
 });
-
+// DELETE a boardgame
+app.delete('/api/boardgames/:id', (req, res) => {
+    const id = req.params.id;
+    const sql = 'DELETE FROM boardgames WHERE id = ?';
+    
+    db.run(sql, id, function(err) {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        
+        if (this.changes === 0) {
+            res.status(404).json({ error: "Game not found" });
+            return;
+        }
+        
+        res.json({ message: "Game deleted successfully", id: id });
+    });
+});
 // Start server
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
