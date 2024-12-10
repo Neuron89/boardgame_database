@@ -1,72 +1,130 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SearchBar from './components/SearchBar';
 import GameList from './components/GameList';
 import AddGameForm from './components/AddGameForm';
 import './App.css';
-    
-    const initialGames = [
-      {
-        id: 1,
-        title: "Catan",
-        image: "https://cf.geekdo-images.com/W3Bsga_uLP9kO91gZ7H8yw__thumb/img/8a9HeqFydO7Uun_le9bXWPnidcA=/fit-in/200x150/filters:strip_icc()/pic2419375.jpg",
-        players: "3-4",
-        time: "60-120",
-        complexity: "Medium",
-        addedBy: "Admin",
-        dateAdded: "2023-01-01"
-      },
-      {
-        id: 2,
-        title: "Ticket to Ride",
-        image: "https://cf.geekdo-images.com/ZWJg0dCdrWHxVnc0eFXK8w__thumb/img/a9rsFV6KR0aun8GobhRU16aU8Kc=/fit-in/200x150/filters:strip_icc()/pic38668.jpg",
-        players: "2-5",
-        time: "30-60",
-        complexity: "Easy",
-        addedBy: "Admin",
-        dateAdded: "2023-01-01"
+
+function App() {
+  const [games, setGames] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  // Fetch all games from the database
+  const fetchGames = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/boardgames');
+      if (!response.ok) {
+        throw new Error('Failed to fetch games');
       }
-    ];
-    
-    function App() {
-      const [games, setGames] = useState(initialGames);
-      const [searchTerm, setSearchTerm] = useState('');
-      const [showAddForm, setShowAddForm] = useState(false);
-    
-      const handleSearch = (term) => {
-        setSearchTerm(term);
-        const filteredGames = initialGames.filter(game =>
-          game.title.toLowerCase().includes(term.toLowerCase())
-        );
-        setGames(filteredGames);
+      const data = await response.json();
+      setGames(data);
+    } catch (error) {
+      console.error('Error fetching games:', error);
+    }
+  };
+
+  // Load games when component mounts
+  useEffect(() => {
+    fetchGames();
+  }, []);
+
+  // Handle search
+  const handleSearch = async (term) => {
+    setSearchTerm(term);
+    try {
+      const response = await fetch(`http://localhost:5000/api/boardgames/search?term=${encodeURIComponent(term)}`);
+      if (!response.ok) {
+        throw new Error('Failed to search games');
+      }
+      const data = await response.json();
+      setGames(data);
+    } catch (error) {
+      console.error('Error searching games:', error);
+    }
+  };
+
+  // Handle adding new game
+  const handleAddGame = async (newGame) => {
+    try {
+      console.log('Sending new game data:', newGame); // Debug log
+      
+      // Parse the players and time values safely
+      let minPlayers, maxPlayers, playingTime;
+      try {
+        minPlayers = newGame.players ? parseInt(newGame.players.split('-')[0]) : null;
+        maxPlayers = newGame.players ? parseInt(newGame.players.split('-')[1]) : null;
+        playingTime = newGame.time ? parseInt(newGame.time.split('-')[0]) : null;
+      } catch (parseError) {
+        console.error('Error parsing numeric values:', parseError);
+        minPlayers = null;
+        maxPlayers = null;
+        playingTime = null;
+      }
+
+      const gameData = {
+        name: newGame.title,
+        description: newGame.description || '',
+        min_players: minPlayers,
+        max_players: maxPlayers,
+        playing_time: playingTime,
+        year_published: null, // Add if you have this field
+        publisher: '', // Add if you have this field
+        image_url: newGame.image || '',
+        complexity: newGame.complexity || '',
+        date_added: new Date().toISOString().split('T')[0]
       };
-    
-      const handleAddGame = (newGame) => {
-        const gameToAdd = {
-          ...newGame,
-          id: games.length + 1,
-          dateAdded: new Date().toISOString().split('T')[0]
-        };
-        
-        setGames(prevGames => [...prevGames, gameToAdd]);
-        setShowAddForm(false);
-      };
-    
-      return (
-        <div className="container">
-          <h1>Boardgame Database</h1>
-          <div className="controls">
-            <SearchBar onSearch={handleSearch} />
-            <button 
-              className="add-game-button" 
-              onClick={() => setShowAddForm(!showAddForm)}
-            >
-              {showAddForm ? 'Cancel' : 'Add New Game'}
-            </button>
+
+      console.log('Formatted game data:', gameData); // Debug log
+
+      const response = await fetch('http://localhost:5000/api/boardgames', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(gameData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add game');
+      }
+
+      // Refresh the games list after adding
+      await fetchGames();
+      setShowAddForm(false);
+    } catch (error) {
+      console.error('Error adding game:', error);
+      alert('Failed to add game. Please try again.');
+    }
+  };
+
+  return (
+    <div className="container">
+      <h1>Boardgame Database</h1>
+      <div className="controls">
+        <SearchBar onSearch={handleSearch} />
+        <button 
+          className="add-button"
+          onClick={() => setShowAddForm(true)}
+        >
+          Add Game
+        </button>
+      </div>
+      
+      {showAddForm && (
+        <div className="modal">
+          <div className="modal-content">
+            <AddGameForm 
+              onSubmit={handleAddGame}
+              onCancel={() => setShowAddForm(false)}
+            />
           </div>
-          {showAddForm && <AddGameForm onSubmit={handleAddGame} />}
-          <GameList games={games} />
         </div>
-      );
+      )}
+
+      <GameList games={games} />
+    </div>
+  );
 }
 
 export default App;
+
