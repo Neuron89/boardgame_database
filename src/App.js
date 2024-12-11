@@ -8,10 +8,12 @@ function App() {
   const [games, setGames] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Fetch all games from the database
   // Add this at the top of your file
-  const API_URL = process.env.REACT_APP_API_URL || 'http://192.168.1.252:5000';
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   
   const fetchGames = async () => {
       try {
