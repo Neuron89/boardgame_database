@@ -1,47 +1,49 @@
-const { Pool } = require('pg');
+const mariadb = require('mariadb');
+require('dotenv').config();
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+const pool = mariadb.createPool({
+    host: '192.168.1.252',
+    port: 3306,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    connectionLimit: 5,
+    connectTimeout: 10000
 });
 
-module.exports = {
-  query: (text, params) => pool.query(text, params),
-};
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-
-const dbPath = path.resolve(__dirname, 'boardgames.db');
-
-// Create a database connection
-const getDbConnection = () => {
-    return new sqlite3.Database(dbPath, (err) => {
-        if (err) {
-            console.error('Error connecting to database:', err);
-        } else {
-            console.log('Connected to SQLite database');
-        }
-    });
+// Test database connection
+const testConnection = async () => {
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        console.log('Successfully connected to MariaDB');
+        return true;
+    } catch (err) {
+        console.error('Database connection error:', err);
+        return false;
+    } finally {
+        if (conn) conn.release();
+    }
 };
 
-// Initialize the database with schema
-const initializeDatabase = () => {
-    const db = getDbConnection();
-    const schema = require('fs').readFileSync(path.resolve(__dirname, 'schema.sql'), 'utf8');
-    
-    db.exec(schema, (err) => {
-        if (err) {
-            console.error('Error initializing database:', err);
-        } else {
-            console.log('Database initialized successfully');
-        }
-    });
-    
-    db.close();
+// Query wrapper function
+const query = async (sql, params) => {
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const result = await conn.query(sql, params);
+        return result;
+    } catch (err) {
+        console.error('Query error:', err);
+        throw err;
+    } finally {
+        if (conn) conn.release();
+    }
 };
 
 module.exports = {
-    getDbConnection,
-    initializeDatabase
+    pool,
+    query,
+    testConnection
 };
 

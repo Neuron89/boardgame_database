@@ -4,11 +4,7 @@ const mariadb = require('mariadb');
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 5000;
-const clientUrl = process.env.CLIENT_URL || 'http://localhost:8081';
-const isDevelopment = process.env.NODE_ENV === 'development';
-
-// CORS configuration
+const port = 8081;  // Set fixed port for your server
 const corsOptions = {
     origin: isDevelopment ? [clientUrl, 'http://localhost:8081'] : clientUrl,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
