@@ -10,9 +10,12 @@ function App() {
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Fetch all games from the database
+  // Add this at the top of your file
+  const API_URL = process.env.REACT_APP_API_URL || 'http://192.168.1.252:5000';
+  
   const fetchGames = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/api/boardgames');
+      try {
+        const response = await fetch(`${API_URL}/api/boardgames`);
       if (!response.ok) {
         throw new Error('Failed to fetch games');
       }
@@ -32,7 +35,7 @@ function App() {
   const handleSearch = async (term) => {
     setSearchTerm(term);
     try {
-      const response = await fetch(`http://localhost:5000/api/boardgames/search?term=${encodeURIComponent(term)}`);
+      const response = await fetch(`http://192.168.1.252:5000/api/boardgames/search?term=${encodeURIComponent(term)}`);
       if (!response.ok) {
         throw new Error('Failed to search games');
       }
@@ -48,7 +51,7 @@ function App() {
     try {
       console.log('Attempting to delete game with ID:', gameId);
       
-      const response = await fetch(`http://localhost:5000/api/boardgames/${gameId}`, {
+      const response = await fetch(`http://192.168.1.252:5000/api/boardgames/${gameId}`, {
         method: 'DELETE',
       });
 
@@ -101,7 +104,7 @@ function App() {
 
       console.log('Formatted game data:', gameData); // Debug log
 
-      const response = await fetch('http://localhost:5000/api/boardgames', {
+      const response = await fetch('http://192.168.1.252:5000/api/boardgames', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -6,6 +6,8 @@ const path = require('path');
 const app = express();
 const port = 5000;
 
+REACT_APP_API_URL=https://boardgames.kys-media.com
+
 // Enable CORS for all routes with specific options
 app.use(cors({
     origin: 'http://localhost:3000', // Allow your React app's origin
