@@ -14,8 +14,10 @@ function App() {
   // Fetch all games from the database
   // Add this at the top of your file
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-  
+  console.log('API URL:', API_URL);
+
   const fetchGames = async () => {
+
       try {
         const response = await fetch(`${API_URL}/api/boardgames`);
       if (!response.ok) {
