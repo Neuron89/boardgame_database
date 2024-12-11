@@ -35,7 +35,7 @@ function App() {
   const handleSearch = async (term) => {
     setSearchTerm(term);
     try {
-      const response = await fetch(`http://192.168.1.252:5000/api/boardgames/search?term=${encodeURIComponent(term)}`);
+      const response = await fetch(`${API_URL}/api/boardgames/search?term=${encodeURIComponent(term)}`);
       if (!response.ok) {
         throw new Error('Failed to search games');
       }
@@ -51,7 +51,7 @@ function App() {
     try {
       console.log('Attempting to delete game with ID:', gameId);
       
-      const response = await fetch(`http://192.168.1.252:5000/api/boardgames/${gameId}`, {
+      const response = await fetch(`${API_URL}/api/boardgames/${gameId}`, {
         method: 'DELETE',
       });
 
@@ -104,7 +104,7 @@ function App() {
 
       console.log('Formatted game data:', gameData); // Debug log
 
-      const response = await fetch('http://192.168.1.252:5000/api/boardgames', {
+      const response = await fetch(`${API_URL}/api/boardgames`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
