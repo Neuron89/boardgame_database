@@ -2,73 +2,77 @@ import React, { useState, useEffect } from 'react';
 import SearchBar from './components/SearchBar';
 import GameList from './components/GameList';
 import AddGameForm from './components/AddGameForm';
+import { database } from './firebase-config';
+import { ref, onValue, push, remove, set } from 'firebase/database';
 import './App.css';
 
 function App() {
   const [games, setGames] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch all games from the database
-  // Add this at the top of your file
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-  console.log('API URL:', API_URL);
-
-  const fetchGames = async () => {
-
-      try {
-        const response = await fetch(`${API_URL}/api/boardgames`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch games');
-      }
-      const data = await response.json();
-      setGames(data);
-    } catch (error) {
-      console.error('Error fetching games:', error);
-    }
-  };
-
-  // Load games when component mounts
+  // Load games from Firebase when component mounts
   useEffect(() => {
-    fetchGames();
+    setIsLoading(true);
+    const gamesRef = ref(database, 'games');
+    
+    const unsubscribe = onValue(gamesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const gamesArray = Object.entries(data).map(([key, value]) => ({
+          ...value,
+          firebaseKey: key
+        }));
+        setGames(gamesArray);
+      } else {
+        setGames([]);
+      }
+      setIsLoading(false);
+    }, (error) => {
+      console.error('Error loading games:', error);
+      setError('Failed to load games');
+      setIsLoading(false);
+    });
+
+    // Cleanup subscription
+    return () => unsubscribe();
   }, []);
 
   // Handle search
-  const handleSearch = async (term) => {
+  const handleSearch = (term) => {
     setSearchTerm(term);
-    try {
-      const response = await fetch(`${API_URL}/api/boardgames/search?term=${encodeURIComponent(term)}`);
-      if (!response.ok) {
-        throw new Error('Failed to search games');
-      }
-      const data = await response.json();
-      setGames(data);
-    } catch (error) {
-      console.error('Error searching games:', error);
+    if (!term.trim()) {
+      const gamesRef = ref(database, 'games');
+      onValue(gamesRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          const gamesArray = Object.entries(data).map(([key, value]) => ({
+            ...value,
+            firebaseKey: key
+          }));
+          setGames(gamesArray);
+        }
+      });
+      return;
     }
+    
+    const filteredGames = games.filter(game => 
+      game.name.toLowerCase().includes(term.toLowerCase()) ||
+      (game.description && game.description.toLowerCase().includes(term.toLowerCase()))
+    );
+    setGames(filteredGames);
   };
 
   // Handle deleting a game
   const handleDeleteGame = async (gameId) => {
     try {
-      console.log('Attempting to delete game with ID:', gameId);
-      
-      const response = await fetch(`${API_URL}/api/boardgames/${gameId}`, {
-        method: 'DELETE',
-      });
-
-      const data = await response.json();
-      console.log('Server response:', data);
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete game: ${data.error || 'Unknown error'}`);
+      const gameToDelete = games.find(game => game.id === gameId);
+      if (gameToDelete && gameToDelete.firebaseKey) {
+        await remove(ref(database, `games/${gameToDelete.firebaseKey}`));
+        console.log('Game deleted successfully');
       }
-
-      console.log('Game deleted successfully');
-      // Refresh the games list after deletion
-      await fetchGames();
     } catch (error) {
       console.error('Error deleting game:', error);
       alert('Failed to delete game. Please try again.');
@@ -78,8 +82,6 @@ function App() {
   // Handle adding new game
   const handleAddGame = async (newGame) => {
     try {
-      console.log('Sending new game data:', newGame); // Debug log
-      
       // Parse the players and time values safely
       let minPlayers, maxPlayers, playingTime;
       try {
@@ -94,44 +96,37 @@ function App() {
       }
 
       const gameData = {
+        id: Date.now(), // Use timestamp as unique ID
         name: newGame.title,
         description: newGame.description || '',
         min_players: minPlayers,
         max_players: maxPlayers,
         playing_time: playingTime,
-        year_published: null, // Add if you have this field
-        publisher: '', // Add if you have this field
+        year_published: null,
+        publisher: '',
         image_url: newGame.image || '',
         complexity: newGame.complexity || '',
         date_added: new Date().toISOString().split('T')[0]
       };
 
-      console.log('Formatted game data:', gameData); // Debug log
-
-      const response = await fetch(`${API_URL}/api/boardgames`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(gameData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add game');
-      }
-
-      const savedGame = await response.json();
-      console.log('Server response:', savedGame);
-
-      // Refresh the games list after adding
-      await fetchGames();
-      console.log('Updated games list:', games);
+      // Add to Firebase
+      const newGameRef = push(ref(database, 'games'));
+      await set(newGameRef, gameData);
       setShowAddForm(false);
+      console.log('Game added successfully:', gameData);
     } catch (error) {
       console.error('Error adding game:', error);
       alert('Failed to add game. Please try again.');
     }
   };
+
+  if (isLoading) {
+    return <div className="container">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="container">Error: {error}</div>;
+  }
 
   return (
     <div className="container">
